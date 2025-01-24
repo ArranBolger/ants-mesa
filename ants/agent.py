@@ -229,3 +229,75 @@ class Ant(Agent):
             self.model.grid.move_agent(self, where)
         else:
             self.random_move()
+
+
+class Cell(Agent):
+    """
+    An agent which contains information about the state of a cell:
+        - location
+        - current quantity of food
+        - food spawn probability
+        - food decay rate
+    """
+
+    def __init__(self, unique_id, pos, model, food_spawn_prob, food_spawn_quantity, food_decay_rate):
+        """
+        Create a new cell.
+        Args:
+            unique_id: a unique value to distinguish the agent
+            pos: The cell's coordinates on the grid.
+            model: standard model reference for agent.
+
+            food_spawn_prob: probability of food appearing at any given timestep
+            food_spawn_quantity: quantity of food that spawns at at time
+            food_decay_rate: linear decay of food per timestep
+        """
+        super().__init__(unique_id, model)
+        
+        self.pos = pos
+
+        self.distance_to_home = self.calc_distance_to_home()
+
+        self.find_neighbors()
+
+        self.food_quantity = 0
+        self.food_spawn_prob = food_spawn_prob
+        self.food_spawn_quantity = food_spawn_quantity
+        self.food_decay_rate = food_decay_rate
+
+        self.pheromone_strength = 0
+        self.pheromone_decay_rate = 1
+
+    def find_neighbors(self):
+        self.neighbor_cells = self.model.grid.get_neighbors(self.pos, self.model.moore)
+
+    def calc_distance_to_home(self):
+        home_x, home_y = self.model.home.pos
+        x, y = self.pos
+
+        max_x = self.model.width
+        max_y = self.model.height
+
+        dx = (x - home_x) % max_x
+        dx = min(dx, max_x - dx)
+
+        dy = (y - home_y) % max_y
+        dy = min(dy, max_y - dy)
+
+        if self.model.moore:
+            return max(dx, dy)
+
+        else:
+            return dx + dy
+
+    def step(self):
+        self.food_quantity = max(
+            0, self.food_quantity - self.food_decay_rate)
+        
+        self.pheromone_strength = max(
+            0, self.pheromone_strength - self.pheromone_decay_rate)
+  
+        p = self.random.random()
+        if p < self.food_spawn_prob:
+            self.food_quantity += self.food_spawn_quantity
+
